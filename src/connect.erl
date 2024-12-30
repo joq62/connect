@@ -150,21 +150,22 @@ handle_cast({update}, State) ->
     LenPrevious=erlang:length(State#state.connect_status),
     if
 	LenPrevious=:=LenNew->
-	    ok;
+	     NewState=State;
 	LenNew>LenPrevious-> % New nodes added
 	    AddedNodes=[N||N<-NewConnectStatus,
 			   false=:=lists:member(N,State#state.connect_status)],
-	    ?LOG_NOTICE("Nodes added ",[AddedNodes]);
+	    ?LOG_NOTICE("Nodes added ",[AddedNodes]),
+	    NewState=State#state{connect_status=NewConnectStatus};
 	LenNew<LenPrevious-> %Removed nodes
 	    RemovedNodes=[N||N<-State#state.connect_status,
 					    false=:=lists:member(N,NewConnectStatus)],
-	    ?LOG_NOTICE("Nodes removed ",[RemovedNodes])
-		
+	    ?LOG_NOTICE("Nodes removed ",[RemovedNodes]),
+	     NewState=State#state{connect_status=NewConnectStatus}	
     end,
     if
 	LenPrevious=:=LenNew->
-	    ?LOG_NOTICE("Connected Nodes ",[NewConnectStatus]);
-	  %  io:format("Updated imported ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,NewImportedList}]);
+	    ?LOG_NOTICE("Connected Nodes ",[NewConnectStatus,
+					    LenPrevious,LenNew]);
 	true->
 	    ok
     end,
