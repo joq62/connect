@@ -92,11 +92,9 @@ start_link() ->
 	  ignore.
 init([]) ->
     process_flag(trap_exit, true),
-    MyNode=node(),
-    ConnectStatus=[{N,net_kernel:connect_node(N)}||N<-?ConnectNodes,
-						  N /= MyNode],
-    
-    spawn(fun()->loop() end),
+    Connect=[{N,net_kernel:connect_node(N)}||N<-?ConnectNodes],
+    ConnectStatus=[N||{N,true}<-Connect],
+     spawn(fun()->loop() end),
     {ok, #state{
 	   connect_status=ConnectStatus
 	   }}.
@@ -148,22 +146,22 @@ handle_cast({update}, State) ->
     NewConnectStatus=[N||{N,true}<-NewConnect],
     LenNew=erlang:length(NewConnectStatus),
     LenPrevious=erlang:length(State#state.connect_status),
+     NewState=if
+		  LenPrevious=:=LenNew->
+		      State;
+		  LenNew>LenPrevious-> % New nodes added
+		      AddedNodes=[N||N<-NewConnectStatus,
+				     false=:=lists:member(N,State#state.connect_status)],
+		      ?LOG_NOTICE("Nodes added ",[AddedNodes]),
+		      State#state{connect_status=NewConnectStatus};
+		  LenNew<LenPrevious-> %Removed nodes
+		      RemovedNodes=[N||N<-State#state.connect_status,
+				       false=:=lists:member(N,NewConnectStatus)],
+		      ?LOG_NOTICE("Nodes removed ",[RemovedNodes]),
+		      State#state{connect_status=NewConnectStatus}	
+	      end,
     if
-	LenPrevious=:=LenNew->
-	     NewState=State;
-	LenNew>LenPrevious-> % New nodes added
-	    AddedNodes=[N||N<-NewConnectStatus,
-			   false=:=lists:member(N,State#state.connect_status)],
-	    ?LOG_NOTICE("Nodes added ",[AddedNodes]),
-	    NewState=State#state{connect_status=NewConnectStatus};
-	LenNew<LenPrevious-> %Removed nodes
-	    RemovedNodes=[N||N<-State#state.connect_status,
-					    false=:=lists:member(N,NewConnectStatus)],
-	    ?LOG_NOTICE("Nodes removed ",[RemovedNodes]),
-	     NewState=State#state{connect_status=NewConnectStatus}	
-    end,
-    if
-	LenPrevious=:=LenNew->
+	LenPrevious==LenNew->
 	    ?LOG_NOTICE("Connected Nodes ",[NewConnectStatus,
 					    LenPrevious,LenNew]);
 	true->

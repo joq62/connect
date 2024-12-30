@@ -44,7 +44,7 @@ start()->
 test1()->
     io:format("Start ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
    
-    glurk=connect:connect_status(),
+   ['connect@c200','connect@c202','connect@c50']=lists:sort(connect:connect_status()),
     
     ok.
 %%-----------------------------------------------
