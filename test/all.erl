@@ -34,7 +34,7 @@ start()->
       
     io:format("Test OK !!! ~p~n",[?MODULE]),
     timer:sleep(2000),
-    init:stop(),
+%    init:stop(),
     ok.
 %%-----------------------------------------------
 %% Function: available_hosts()

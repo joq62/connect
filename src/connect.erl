@@ -93,7 +93,7 @@ start_link() ->
 init([]) ->
     process_flag(trap_exit, true),
     Connect=[{N,net_kernel:connect_node(N)}||N<-?ConnectNodes],
-    ConnectStatus=[N||{N,true}<-Connect],
+    ConnectStatus=lists:sort([N||{N,true}<-Connect]),
      spawn(fun()->loop() end),
     {ok, #state{
 	   connect_status=ConnectStatus
@@ -143,30 +143,30 @@ handle_call(UnMatchedSignal, From, State) ->
 
 handle_cast({update}, State) ->
     NewConnect=[{N,net_kernel:connect_node(N)}||N<-?ConnectNodes],
-    NewConnectStatus=[N||{N,true}<-NewConnect],
-    LenNew=erlang:length(NewConnectStatus),
-    LenPrevious=erlang:length(State#state.connect_status),
+    NewConnectStatus=lists:sort([N||{N,true}<-NewConnect]),
     NewState=if
-		 LenPrevious=:=LenNew->
+		 State#state.connect_status=:=NewConnectStatus->
 		     State;
-		 LenNew>LenPrevious-> % New nodes added
+		 true->
 		     AddedNodes=[N||N<-NewConnectStatus,
-				     false=:=lists:member(N,State#state.connect_status)],
-		     ?LOG_NOTICE("Nodes added ",[AddedNodes]),
-		     State#state{connect_status=NewConnectStatus};
-		 LenNew<LenPrevious-> %Removed nodes
+				    false=:=lists:member(N,State#state.connect_status)],
 		     RemovedNodes=[N||N<-State#state.connect_status,
 				      false=:=lists:member(N,NewConnectStatus)],
-		     ?LOG_NOTICE("Nodes removed ",[RemovedNodes]),
+		     if
+			 AddedNodes=/=[]->
+			     ?LOG_NOTICE("Nodes added ",[AddedNodes]);
+			 true->
+			     ok
+		     end,
+		     if
+			 RemovedNodes=/=[]->
+			     ?LOG_NOTICE("Nodes renoved ",[RemovedNodes]);
+			 true->
+			     ok
+		     end,
+		     ?LOG_NOTICE("Uppdated Connected Nodes status",[NewConnectStatus]),
 		     State#state{connect_status=NewConnectStatus}	
 	     end,
-    if
-	LenPrevious==LenNew->
-	    ?LOG_NOTICE("Connected Nodes ",[NewConnectStatus,
-					    LenPrevious,LenNew]);
-	true->
-	    ok
-    end,
     spawn(fun()->loop() end),
     {noreply, NewState};
 
