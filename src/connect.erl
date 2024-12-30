@@ -160,7 +160,7 @@ handle_cast({update}, State) ->
 		     end,
 		     if
 			 RemovedNodes=/=[]->
-			     ?LOG_NOTICE("Nodes renoved ",[RemovedNodes]);
+			     ?LOG_NOTICE("Nodes removed ",[RemovedNodes]);
 			 true->
 			     ok
 		     end,
